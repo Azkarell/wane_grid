@@ -1,10 +1,18 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-use bevy::math::{IVec3, Vec2, Vec3, Vec3Swizzles};
+use bevy::{
+    ecs::{component::Component, name::Name},
+    math::{IVec3, Vec2, Vec3, Vec3Swizzles},
+    mesh::Mesh2d,
+    reflect::Reflect,
+    sprite_render::{ColorMaterial, MeshMaterial2d},
+    transform::components::Transform,
+};
 
 use crate::{AXIAL_CONVERT, AXIAL_INVERTED};
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy, Hash)]
+#[derive(Component, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, Default)]
+#[require(Transform, Mesh2d, MeshMaterial2d<ColorMaterial>, Name=Name::new("GridIndex"))]
 pub struct GridIndex {
     pub q: i32,
     pub r: i32,

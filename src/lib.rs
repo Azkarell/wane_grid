@@ -166,7 +166,7 @@ pub fn init_grid_from_indicies<
                 Transform::from_translation(i.to_world_pos(**render_radius).extend(0.0));
             let id = commands
                 .spawn((
-                    GridEntity(i),
+                    i,
                     default,
                     transform,
                     Mesh2d(hexagon.clone()),
@@ -200,7 +200,7 @@ impl<Init: GridInit + Send + Sync + 'static, V: GridEntryValue + 'static> Plugin
         app.add_observer(
             |on: On<Insert, CleanupGrid>,
              mut commands: Commands,
-             query: Query<Entity, With<GridEntity>>| {
+             query: Query<Entity, With<GridIndex>>| {
                 for e in query {
                     commands.entity(e).despawn();
                 }
@@ -356,16 +356,6 @@ pub struct Hover;
 //
 //    trigger.propagate(true);
 //}
-
-#[derive(Component, Clone, Deref, DerefMut)]
-#[require(Transform, Mesh2d, MeshMaterial2d<ColorMaterial>, Name=Name::new("GridEntity"), )]
-pub struct GridEntity(pub GridIndex);
-
-impl From<GridEntity> for GridIndex {
-    fn from(value: GridEntity) -> Self {
-        value.0
-    }
-}
 
 #[derive(Resource, DerefMut, Deref, Clone, Copy)]
 pub struct HexGridCirumRadius(f32);
