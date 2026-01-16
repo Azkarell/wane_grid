@@ -5,3 +5,5 @@ edition = "2024"
 
 [dependencies]
 bevy = { version = "0.17.2", features = ["bevy_log", "bevy_asset",  "bevy_sprite", "bevy_render", "bevy_sprite_render"], default-features = false }
+serde = { version = "1.*", features = [ "derive"]}
+

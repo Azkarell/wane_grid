@@ -8,10 +8,13 @@ use bevy::{
     sprite_render::{ColorMaterial, MeshMaterial2d},
     transform::components::Transform,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::{AXIAL_CONVERT, AXIAL_INVERTED};
 
-#[derive(Component, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, Default)]
+#[derive(
+    Component, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, Default, Serialize, Deserialize,
+)]
 #[require(Transform, Mesh2d, MeshMaterial2d<ColorMaterial>, Name=Name::new("GridIndex"))]
 pub struct GridIndex {
     pub q: i32,
