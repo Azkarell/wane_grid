@@ -207,10 +207,6 @@ impl<Init: GridInit + Send + Sync + 'static, V: GridEntryValue + 'static> Plugin
                 commands.entity(on.entity).despawn();
             },
         );
-        //app.add_systems(
-        //    Update,
-        //    on_assets_loaded.run_if(resource_exists_and_changed::<GroundImage>),
-        //);
     }
 }
 
@@ -223,139 +219,11 @@ impl<Init: GridInit + Default, V: GridEntryValue> Default for GridPlugin<Init, V
     }
 }
 
-//pub fn on_assets_loaded(
-//    mut materials: ResMut<GridMaterials>,
-//    mut color_materials: ResMut<Assets<ColorMaterial>>,
-//    layout: Res<GroundLayout>,
-//    layouts: Res<Assets<TextureAtlasLayout>>,
-//    mountain_index: Res<MountainIndex>,
-//    grass_index: Res<GrassIndex>,
-//    texture: Res<GroundImage>,
-//) {
-//    let layout = layouts.get(&layout.0).unwrap();
-//
-//    let size = layout.size;
-//    let index = layout.textures[mountain_index.0];
-//
-//    let mountain_handle = color_materials.add(ColorMaterial {
-//        texture: Some(texture.0.clone()),
-//        uv_transform: index.to_affine_transform(size),
-//        ..Default::default()
-//    });
-//    let size = layout.size;
-//    let index = layout.textures[grass_index.0];
-//
-//    let grass_handle = color_materials.add(ColorMaterial {
-//        texture: Some(texture.0.clone()),
-//        uv_transform: index.to_affine_transform(size),
-//        ..Default::default()
-//    });
-//
-//    let path_handle = color_materials.add(ColorMaterial {
-//        color: PATH_COLOR.into(),
-//        ..Default::default()
-//    });
-//
-//    materials.insert(GridEntry::Path, path_handle.clone());
-//    materials.insert(GridEntry::None, grass_handle.clone());
-//    materials.insert(GridEntry::PathEnd, mountain_handle.clone());
-//    materials.insert(GridEntry::PathStart, mountain_handle.clone());
-//    materials.insert(GridEntry::Tower, mountain_handle.clone());
-//}
-
 #[derive(Resource, Deref, DerefMut)]
 pub struct Hexagon(pub Handle<Mesh>);
 
 #[derive(Component)]
 pub struct Hover;
-
-//pub fn on_hex_hover(
-//    event: On<Pointer<Over>>,
-//    mut commands: Commands,
-//    hexagon: Res<Hexagon>,
-//    hover_tint: Res<HoverTintMaterial>,
-//) {
-//    commands.entity(event.entity).with_child((
-//        Hover,
-//        Mesh2d(hexagon.0.clone()),
-//        MeshMaterial2d(hover_tint.0.clone()),
-//        Transform::IDENTITY.with_translation(Vec3::ZERO.with_z(10.0)),
-//        Pickable::IGNORE,
-//    ));
-//}
-
-//pub fn on_hex_out(
-//    event: On<Pointer<Out>>,
-//    mut commands: Commands,
-//    query: Query<(Entity, &ChildOf), With<Hover>>,
-//) {
-//    for q in query {
-//        if q.1.parent() == event.entity {
-//            commands.entity(q.0).despawn();
-//        }
-//    }
-//}
-
-//pub fn on_hex_click(
-//    mut trigger: On<Pointer<Click>>,
-//    mut commands: Commands,
-//    input: <ui::radial_menu::TowerTypeMenuProvider as ui::radial_menu::MenuProvider>::Input<'_>,
-//    menu_exists: Query<&MenuMarker>,
-//    grid_info: Query<(&GridEntity, &mut GridEntry)>,
-//) {
-//    if menu_exists.is_empty()
-//        && let Ok((_entity, entry)) = grid_info.get(trigger.entity)
-//        && *entry == GridEntry::None
-//    {
-//        let menu_provider = TowerTypeMenuProvider;
-//        let mut menu = menu_provider.get_menu(input);
-//        let observer = Observer::new(
-//            |trigger: On<Pointer<Click>>,
-//             commands: Commands,
-//             player: Single<(Entity, &mut Gold), With<Player>>,
-//             parent_query: Query<&ChildOf>,
-//             mut position_query: Query<(&GridEntity, &mut GridEntry)>,
-//             mut tower_registry: ResMut<TowerRegistry>,
-//             tower_type_query: Query<(&ChildOf, &TowerHandle)>| {
-//                let Ok((child, tower_handle)) = tower_type_query.get(trigger.entity) else {
-//                    error!("Tower click expected tower type");
-//                    return;
-//                };
-//                let mut parent = Some(child.parent());
-//
-//                let (player_entity, mut g) = player.into_inner();
-//                while let Some(p) = parent {
-//                    if let Ok((_index, mut entry)) = position_query.get_mut(p) {
-//                        if *entry == GridEntry::None
-//                            && spawn_tower_at(
-//                                p,
-//                                commands,
-//                                *tower_handle,
-//                                &mut tower_registry,
-//                                &mut g,
-//                                player_entity,
-//                            )
-//                        {
-//                            *entry = GridEntry::Tower
-//                        }
-//                        return;
-//                    } else if let Ok(p) = parent_query.get(p) {
-//                        parent = Some(p.parent());
-//                    } else {
-//                        error!("Could not find parent for tower placement");
-//                        parent = None;
-//                    }
-//                }
-//            },
-//        );
-//        menu.add_observer(observer);
-//        commands.entity(trigger.entity).with_children(|builder| {
-//            menu.spawn_all(builder);
-//        });
-//    }
-//
-//    trigger.propagate(true);
-//}
 
 #[derive(Resource, DerefMut, Deref, Clone, Copy)]
 pub struct HexGridCirumRadius(f32);
@@ -370,49 +238,3 @@ pub static AXIAL_INVERTED: LazyLock<Mat2> = LazyLock::new(|| {
         Vec2::new(-1.0 / 3.0, 2.0 / 3.0),
     )
 });
-
-//#[derive(Default)]
-//pub struct GridIndexNeighboursProvider;
-
-//impl NeighboursProvider<GridIndex> for GridIndexNeighboursProvider {
-//    fn get_neighbours(&self, pos: GridIndex) -> crate::path::Neighbours<GridIndex> {
-//        let vec = GridDirections::VARIANTS
-//            .iter()
-//            .map(|d| pos + d.get())
-//            .collect();
-//        crate::path::Neighbours { values: vec }
-//    }
-//}
-
-//#[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
-//pub enum GridEntry {
-//    #[default]
-//    None,
-//    Tower,
-//    Path,
-//    PathStart,
-//    PathEnd,
-//}
-
-//impl From<GridEntry> for PathInfo {
-//    fn from(value: GridEntry) -> Self {
-//        match value {
-//            GridEntry::None => PathInfo::Free,
-//            GridEntry::Tower => PathInfo::Occupied,
-//            GridEntry::Path => PathInfo::Occupied,
-//            GridEntry::PathStart => PathInfo::Start,
-//            GridEntry::PathEnd => PathInfo::End,
-//        }
-//    }
-//}
-
-//def_enum! {
-//    pub GridDirections => GridIndex {
-//        RIGHT => GridIndex::new(1,0),
-//        LEFT => GridIndex::new(-1,0),
-//        TOPLEFT => GridIndex::new(-1, 1),
-//        TOPRIGHT => GridIndex::new(0, 1),
-//        BOTTOMLEFT => GridIndex::new(0, -1),
-//        BOTTOMRIGHT => GridIndex::new(1, -1)
-//    }
-//}
