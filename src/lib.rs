@@ -187,6 +187,7 @@ pub struct GridEntityCreated {
 }
 
 #[derive(Component)]
+#[component(storage = "SparseSet")]
 pub struct CleanupGrid;
 
 impl<Init: GridInit + Send + Sync + 'static, V: GridEntryValue + 'static> Plugin
