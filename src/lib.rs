@@ -198,16 +198,25 @@ impl<Init: GridInit + Send + Sync + 'static, V: GridEntryValue + 'static> Plugin
         //app.add_plugins(AssetPathProviderPlugin::<GridAssets>::default());
         app.insert_resource(GridMaterials::<V>::default());
         app.add_systems(Update, (on_entry_changed::<V>,));
-        app.add_observer(
-            |on: On<Insert, CleanupGrid>,
-             mut commands: Commands,
-             query: Query<Entity, With<GridIndex>>| {
-                for e in query {
-                    commands.entity(e).despawn();
-                }
-                commands.entity(on.entity).despawn();
-            },
-        );
+        app.add_systems(Update, cleanup_grid);
+    }
+}
+
+fn cleanup_grid(
+    query: Query<Entity, With<GridIndex>>,
+    mut commands: Commands,
+    should_query: Query<Entity, Added<CleanupGrid>>,
+) {
+    let mut should = false;
+    for e in should_query {
+        should = true;
+        commands.entity(e).despawn();
+    }
+    if should {
+        for e in query {
+            commands.entity(e).despawn();
+        }
+        info!("cleanup grid done");
     }
 }
 
