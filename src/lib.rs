@@ -229,6 +229,15 @@ impl<Init: GridInit + Default, V: GridEntryValue> Default for GridPlugin<Init, V
     }
 }
 
+impl<Init: GridInit, V: GridEntryValue> GridPlugin<Init, V> {
+    pub fn new(init: Init) -> Self {
+        Self {
+            init,
+            _pd: Default::default(),
+        }
+    }
+}
+
 #[derive(Resource, Deref, DerefMut)]
 pub struct Hexagon(pub Handle<Mesh>);
 
