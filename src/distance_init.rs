@@ -14,10 +14,10 @@ use crate::{
 };
 
 pub struct DistanceInit<V: GridEntryValue> {
-    max_distance: u32,
-    render_radius: f32,
-    margin: f32,
-    default: GridEntry<V>,
+    pub max_distance: u32,
+    pub render_radius: f32,
+    pub margin: f32,
+    pub default: GridEntry<V>,
 }
 impl<V: GridEntryValue> Default for DistanceInit<V> {
     fn default() -> Self {
