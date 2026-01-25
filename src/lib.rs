@@ -14,7 +14,6 @@ use bevy::{
         system::{Commands, Query, Res, ResMut, ScheduleSystem},
     },
     math::{Mat2, Vec2, ops::sqrt, primitives::RegularPolygon},
-    platform::collections::HashMap,
     prelude::*,
     transform::components::Transform,
 };
