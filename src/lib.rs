@@ -66,16 +66,6 @@ impl<I: Iterator<Item = GridIndex>> AllFieldsIterator<I> {
     }
 }
 
-fn on_entry_changed<V: GridEntryValue + Send + Sync + 'static>(
-    query: Query<(&GridEntry<V>, &mut MeshMaterial2d<ColorMaterial>), Changed<GridEntry<V>>>,
-    gird_materials: Res<GridMaterials<V>>,
-) {
-    for (e, mut m) in query {
-        debug!("changed: {:?}", e);
-        m.0 = gird_materials.get(e);
-    }
-}
-
 pub trait GridEntryValue:
     std::hash::Hash + PartialEq + Eq + Clone + Copy + std::fmt::Debug + Send + Sync
 {
@@ -123,29 +113,6 @@ impl<V: GridEntryValue> GridEntry<V> {
     }
 }
 
-#[derive(Resource)]
-pub struct GridMaterials<V: GridEntryValue> {
-    map: HashMap<GridEntry<V>, Handle<ColorMaterial>>,
-}
-
-impl<V: GridEntryValue> Default for GridMaterials<V> {
-    fn default() -> Self {
-        Self {
-            map: Default::default(),
-        }
-    }
-}
-
-impl<V: GridEntryValue> GridMaterials<V> {
-    pub fn get(&self, entry: &GridEntry<V>) -> Handle<ColorMaterial> {
-        self.map.get(entry).unwrap().clone()
-    }
-
-    pub fn insert(&mut self, entry: GridEntry<V>, handle: Handle<ColorMaterial>) {
-        self.map.insert(entry, handle);
-    }
-}
-
 pub fn init_grid_from_indicies<
     V: GridEntryValue + 'static,
     I: Iterator<Item = GridIndex> + 'static,
@@ -156,22 +123,14 @@ pub fn init_grid_from_indicies<
     (move |mut commands: Commands,
            mut meshes: ResMut<Assets<Mesh>>,
            cirumradius: Res<HexGridCirumRadius>,
-           render_radius: Res<HexGridRenderRadius>,
-           gird_materials: Res<GridMaterials<V>>| {
+           render_radius: Res<HexGridRenderRadius>| {
         let hexagon = meshes.add(RegularPolygon::new(**cirumradius, 6));
         commands.insert_resource(Hexagon(hexagon.clone()));
-        let handle = gird_materials.get(&GridEntry::None);
         for i in indices.iter() {
             let transform =
                 Transform::from_translation(i.to_world_pos(**render_radius).extend(0.0));
             let id = commands
-                .spawn((
-                    i,
-                    default,
-                    transform,
-                    Mesh2d(hexagon.clone()),
-                    MeshMaterial2d(handle.clone()),
-                ))
+                .spawn((i, default, transform, Mesh2d(hexagon.clone())))
                 .id();
             commands.trigger(GridEntityCreated { entity: id });
         }
@@ -195,9 +154,6 @@ impl<Init: GridInit + Send + Sync + 'static, V: GridEntryValue + 'static> Plugin
 {
     fn build(&self, app: &mut bevy::app::App) {
         self.init.register(app);
-        //app.add_plugins(AssetPathProviderPlugin::<GridAssets>::default());
-        app.insert_resource(GridMaterials::<V>::default());
-        app.add_systems(Update, (on_entry_changed::<V>,));
         app.add_systems(Update, cleanup_grid);
     }
 }
@@ -240,9 +196,6 @@ impl<Init: GridInit, V: GridEntryValue> GridPlugin<Init, V> {
 
 #[derive(Resource, Deref, DerefMut)]
 pub struct Hexagon(pub Handle<Mesh>);
-
-#[derive(Component)]
-pub struct Hover;
 
 #[derive(Resource, DerefMut, Deref, Clone, Copy)]
 pub struct HexGridCirumRadius(f32);

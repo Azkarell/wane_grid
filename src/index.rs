@@ -74,7 +74,6 @@ impl GridIndex {
     }
 
     pub fn from_row_col(row: i32, col: i32) -> Self {
-        let col = col;
         let row = row + (-(col as f32) / 2.0).ceil() as i32;
         Self { q: col, r: row }
     }
