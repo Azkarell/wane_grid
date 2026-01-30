@@ -129,7 +129,13 @@ pub fn init_grid_from_indicies<
             let transform =
                 Transform::from_translation(i.to_world_pos(**render_radius).extend(0.0));
             let id = commands
-                .spawn((i, default, transform, Mesh2d(hexagon.clone())))
+                .spawn((
+                    i,
+                    default,
+                    transform,
+                    Mesh2d(hexagon.clone()),
+                    Name::new(format!("GridIndex q:{} r:{}", i.q, i.r)),
+                ))
                 .id();
             commands.trigger(GridEntityCreated { entity: id });
         }

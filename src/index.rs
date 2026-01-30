@@ -1,7 +1,7 @@
 use std::ops::{Add, Div, Mul, Sub};
 
 use bevy::{
-    ecs::{component::Component, name::Name},
+    ecs::component::Component,
     math::{IVec3, Vec2, Vec3, Vec3Swizzles},
     reflect::Reflect,
 };
@@ -12,7 +12,6 @@ use crate::{AXIAL_CONVERT, AXIAL_INVERTED};
 #[derive(
     Component, Debug, PartialEq, Eq, Clone, Copy, Hash, Reflect, Default, Serialize, Deserialize,
 )]
-#[require(Name=Name::new("GridIndex"))]
 pub struct GridIndex {
     pub q: i32,
     pub r: i32,
