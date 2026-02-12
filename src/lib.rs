@@ -1,17 +1,15 @@
-pub mod distance_init;
 pub mod index;
-pub mod rectangle;
 pub mod spatial_grid;
 
-use std::{marker::PhantomData, sync::LazyLock};
+use std::sync::LazyLock;
 
 use bevy::{
     app::Plugin,
     asset::{Assets, Handle},
     ecs::{
         entity::Entity,
-        schedule::{IntoScheduleConfigs, ScheduleConfigs},
-        system::{Commands, Query, Res, ResMut, ScheduleSystem},
+        schedule::IntoScheduleConfigs,
+        system::{Commands, Query, Res, ResMut},
     },
     math::{Mat2, Vec2, ops::sqrt, primitives::RegularPolygon},
     prelude::*,
@@ -20,14 +18,26 @@ use bevy::{
 
 use crate::index::GridIndex;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum GenerationType {
+    New { distance: usize },
+    Append { distance: usize },
+}
+
 #[derive(Event)]
-pub struct GenerateGrid;
+pub struct GenerateGrid {
+    pub grid_type: GenerationType,
+    pub offset: Option<Vec2>,
+}
 
 #[derive(Event)]
 pub struct GridGenerated;
 
 #[derive(Resource)]
-pub struct GridGenerationInfo;
+pub struct GridGenerationInfo {
+    pub grid_type: GenerationType,
+    pub offset: Option<Vec2>,
+}
 
 #[derive(Resource)]
 #[allow(unused)]
@@ -47,22 +57,10 @@ impl GridPropertyDetector {
 
 #[derive(SystemSet, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GridSet;
-pub struct GridPlugin<Init: GridInit, V: GridEntryValue> {
-    init: Init,
-    _pd: PhantomData<V>,
-}
-pub trait GridInit {
-    fn register(&self, app: &mut App);
-}
-
-pub struct AllFieldsIterator<I: Iterator<Item = GridIndex>> {
-    f: Box<dyn FnMut() -> I + Send + Sync>,
-}
-
-impl<I: Iterator<Item = GridIndex>> AllFieldsIterator<I> {
-    fn iter(&mut self) -> I {
-        (self.f)()
-    }
+pub struct GridPlugin<V: GridEntryValue> {
+    default_value: GridEntry<V>,
+    render_radius: f32,
+    cirumradius: f32,
 }
 
 pub trait GridEntryValue:
@@ -112,38 +110,6 @@ impl<V: GridEntryValue> GridEntry<V> {
     }
 }
 
-pub fn init_grid_from_indicies<
-    V: GridEntryValue + 'static,
-    I: Iterator<Item = GridIndex> + 'static,
->(
-    mut indices: AllFieldsIterator<I>,
-    default: GridEntry<V>,
-) -> ScheduleConfigs<ScheduleSystem> {
-    (move |mut commands: Commands,
-           mut meshes: ResMut<Assets<Mesh>>,
-           cirumradius: Res<HexGridCirumRadius>,
-           render_radius: Res<HexGridRenderRadius>| {
-        let hexagon = meshes.add(RegularPolygon::new(**cirumradius, 6));
-        commands.insert_resource(Hexagon(hexagon.clone()));
-        for i in indices.iter() {
-            let transform =
-                Transform::from_translation(i.to_world_pos(**render_radius).extend(0.0));
-            let id = commands
-                .spawn((
-                    i,
-                    default,
-                    transform,
-                    Mesh2d(hexagon.clone()),
-                    Name::new(format!("GridIndex q:{} r:{}", i.q, i.r)),
-                ))
-                .id();
-            commands.trigger(GridEntityCreated { entity: id });
-        }
-        commands.trigger(GridGenerated);
-    })
-    .into_configs()
-}
-
 #[allow(unused)]
 #[derive(Event)]
 pub struct GridEntityCreated {
@@ -154,14 +120,36 @@ pub struct GridEntityCreated {
 #[component(storage = "SparseSet")]
 pub struct CleanupGrid;
 
-impl<Init: GridInit + Send + Sync + 'static, V: GridEntryValue + 'static> Plugin
-    for GridPlugin<Init, V>
-{
+#[derive(Resource, Debug, Deref)]
+struct CurrentMaxDistance(usize);
+
+impl<V: GridEntryValue + 'static> Plugin for GridPlugin<V> {
     fn build(&self, app: &mut bevy::app::App) {
-        self.init.register(app);
+        app.insert_resource(GridDefaultValue(self.default_value));
+        app.insert_resource(HexGridCirumRadius(self.cirumradius));
+        app.insert_resource(HexGridRenderRadius(self.render_radius));
+        app.insert_resource(CurrentMaxDistance(0));
+        app.add_observer(|on: On<GenerateGrid>, mut commands: Commands| {
+            commands.insert_resource(GridGenerationInfo {
+                grid_type: on.grid_type,
+                offset: on.offset,
+            });
+        });
+        app.add_observer(|_: On<GridGenerated>, mut commands: Commands| {
+            commands.remove_resource::<GridGenerationInfo>();
+        });
+        app.add_systems(Startup, prepare_meshes);
+
         app.add_systems(Update, cleanup_grid);
+        app.add_systems(
+            FixedUpdate,
+            generate_grid::<V>.run_if(resource_added::<GridGenerationInfo>),
+        );
     }
 }
+
+#[derive(Resource, Debug)]
+struct GridDefaultValue<V: GridEntryValue>(GridEntry<V>);
 
 fn cleanup_grid(
     query: Query<Entity, With<GridIndex>>,
@@ -181,20 +169,21 @@ fn cleanup_grid(
     }
 }
 
-impl<Init: GridInit + Default, V: GridEntryValue> Default for GridPlugin<Init, V> {
+impl<V: GridEntryValue> Default for GridPlugin<V> {
     fn default() -> Self {
         Self {
-            init: Init::default(),
-            _pd: Default::default(),
+            default_value: GridEntry::None,
+            render_radius: 20.0,
+            cirumradius: 19.0,
         }
     }
 }
 
-impl<Init: GridInit, V: GridEntryValue> GridPlugin<Init, V> {
-    pub fn new(init: Init) -> Self {
+impl<V: GridEntryValue> GridPlugin<V> {
+    pub fn new(default_value: GridEntry<V>) -> Self {
         Self {
-            init,
-            _pd: Default::default(),
+            default_value,
+            ..Default::default()
         }
     }
 }
@@ -215,3 +204,67 @@ pub static AXIAL_INVERTED: LazyLock<Mat2> = LazyLock::new(|| {
         Vec2::new(-1.0 / 3.0, 2.0 / 3.0),
     )
 });
+
+fn generate_grid<V: GridEntryValue + 'static>(
+    mut commands: Commands,
+    info: Res<GridGenerationInfo>,
+    default_value: Res<GridDefaultValue<V>>,
+    cur_max_distance: Res<CurrentMaxDistance>,
+    hexagon: Res<Hexagon>,
+    render_radius: Res<HexGridRenderRadius>,
+) {
+    let iterator: Box<dyn Iterator<Item = GridIndex>> = match info.grid_type {
+        GenerationType::New { distance } => {
+            let d = distance as i32;
+            commands.insert_resource(CurrentMaxDistance(d as usize));
+            commands.insert_resource(GridPropertyDetector {
+                is_edge: Box::new(move |index| GridIndex::ZERO.distance(&index) == distance as u32),
+                is_center: Box::new(move |index| index == GridIndex::ZERO),
+            });
+            Box::new(
+                (-d..=d)
+                    .flat_map(move |i| (-d..=d).map(move |j| GridIndex::new(j, i)))
+                    .filter(move |i| i.distance(&GridIndex::ZERO) <= distance as u32),
+            )
+        }
+        GenerationType::Append { distance } => {
+            let d = distance as i32 + cur_max_distance.0 as i32;
+            commands.insert_resource(CurrentMaxDistance(d as usize));
+            commands.insert_resource(GridPropertyDetector {
+                is_edge: Box::new(move |index| GridIndex::ZERO.distance(&index) == d as u32),
+                is_center: Box::new(move |index| index == GridIndex::ZERO),
+            });
+            Box::new(
+                (-d..=d)
+                    .flat_map(move |i| (-d..=d).map(move |j| GridIndex::new(j, i)))
+                    .filter(move |i| {
+                        let gid = i.distance(&GridIndex::ZERO);
+                        gid <= distance as u32 && gid > cur_max_distance.0 as u32
+                    }),
+            )
+        }
+    };
+    for i in iterator.into_iter() {
+        let transform = Transform::from_translation(i.to_world_pos(**render_radius).extend(0.0));
+        let id = commands
+            .spawn((
+                i,
+                default_value.0,
+                transform,
+                Mesh2d(hexagon.clone()),
+                Name::new(format!("GridIndex q:{} r:{}", i.q, i.r)),
+            ))
+            .id();
+        commands.trigger(GridEntityCreated { entity: id });
+    }
+    commands.trigger(GridGenerated);
+}
+
+fn prepare_meshes(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    circumradius: Res<HexGridCirumRadius>,
+) {
+    let hexagon = meshes.add(RegularPolygon::new(**circumradius, 6));
+    commands.insert_resource(Hexagon(hexagon.clone()));
+}
