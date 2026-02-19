@@ -15,6 +15,7 @@ use bevy::{
     prelude::*,
     transform::components::Transform,
 };
+use serde::{Deserialize, Serialize};
 
 use crate::index::GridIndex;
 
@@ -73,7 +74,7 @@ impl<T: std::hash::Hash + PartialEq + Eq + Clone + Copy + std::fmt::Debug + Send
 {
 }
 
-#[derive(Component, Hash, PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(Component, Hash, PartialEq, Eq, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum GridEntry<V: GridEntryValue> {
     None,
     Value(V),

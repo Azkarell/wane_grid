@@ -7,3 +7,5 @@ edition = "2024"
 bevy = { version = "0.18.0", features = ["bevy_log", "bevy_asset",  "bevy_sprite", "bevy_render", "bevy_sprite_render"], default-features = false }
 serde = { version = "1.*", features = [ "derive"]}
 
+
+
